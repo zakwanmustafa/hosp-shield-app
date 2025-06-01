@@ -49,10 +49,19 @@ menu = st.sidebar.radio("Navigation", [
     "User Management"
 ])
 
+# Store external factor inputs in session state (optional placeholder values)
+if "external_factors" not in st.session_state:
+    st.session_state.external_factors = {
+        "pandemic_severity": "Unknown",
+        "active_cases": 0,
+        "spread_rate": 0.0,
+        "risk_level": "Unknown"
+    }
+
 # Helper function to calculate preparedness score
 def calculate_score(data):
     components = [
-        100 - data['bed_occupancy'],
+        100 - data['bed_occupancy'],  # invert occupancy for score
         data['icu_capacity'],
         data['staff_availability'],
         data['med_stock'],
@@ -73,7 +82,6 @@ if menu == "Dashboard Overview":
             st.warning("Moderate Preparedness")
         else:
             st.success("High Preparedness")
-
         st.write("### Indicators")
         st.bar_chart(latest[['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']].T)
     else:
@@ -87,7 +95,14 @@ elif menu == "External Factors Input":
         active_cases = st.number_input("Active Cases", min_value=0)
         spread_rate = st.number_input("Rate of Spread (R0)", min_value=0.0)
         risk_level = st.selectbox("Community Risk Level", ["Low", "Moderate", "High"])
-        st.form_submit_button("Save External Factors")
+        if st.form_submit_button("Save External Factors"):
+            st.session_state.external_factors = {
+                "pandemic_severity": pandemic_severity,
+                "active_cases": active_cases,
+                "spread_rate": spread_rate,
+                "risk_level": risk_level
+            }
+            st.success("External factors saved.")
 
 # Internal Factors Input
 elif menu == "Internal Factors Input":
@@ -110,7 +125,6 @@ elif menu == "Internal Factors Input":
         tat = st.number_input("Test Turnaround Time (hrs)", min_value=0.0)
         food_supply_days = st.number_input("Food Supply Reserve (days)", min_value=0)
         ipc_status = st.selectbox("IPC Status", ["Adequate", "Partial", "Inadequate"])
-
         if st.form_submit_button("Submit"):
             score = calculate_score({
                 'bed_occupancy': bed_occupancy,
@@ -119,6 +133,7 @@ elif menu == "Internal Factors Input":
                 'med_stock': med_stock,
                 'lab_capacity': lab_capacity
             })
+            ext = st.session_state.external_factors
             date = datetime.now().strftime("%Y-%m-%d %H:%M")
             cursor.execute("""
                 INSERT INTO preparedness (
@@ -129,8 +144,9 @@ elif menu == "Internal Factors Input":
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
-                "", 0, 0.0, "", ventilators, oxygen_supply, on_duty_staff, sick_staff, specialist_avail,
-                ppe_stock, triage_status, tests_per_day, tat, food_supply_days, ipc_status, score
+                ext['pandemic_severity'], ext['active_cases'], ext['spread_rate'], ext['risk_level'],
+                ventilators, oxygen_supply, on_duty_staff, sick_staff, specialist_avail, ppe_stock,
+                triage_status, tests_per_day, tat, food_supply_days, ipc_status, score
             ))
             conn.commit()
             st.success(f"Data saved. Preparedness Score: {score}%")
