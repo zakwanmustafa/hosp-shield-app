@@ -121,8 +121,6 @@ if menu == "Dashboard Overview":
         indicators = latest.loc[:, ['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']].T
         indicators.columns = ['Latest']
         st.bar_chart(indicators)
-    else:
-        st.info("No data available. Please input current status.")
 
 # 2. External Factors Input
 elif menu == "External Factors Input":
