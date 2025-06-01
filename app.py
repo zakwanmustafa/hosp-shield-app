@@ -136,8 +136,7 @@ elif menu == "Internal Factors Input":
             ext = st.session_state.external_factors
             date = datetime.now().strftime("%Y-%m-%d %H:%M")
             cursor.execute("""
-                cursor.execute("""
-        INSERT INTO preparedness (
+    INSERT INTO preparedness (
         date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
         pandemic_severity, active_cases, spread_rate, risk_level, ventilators, oxygen_supply,
         on_duty_staff, sick_staff, specialist_avail, ppe_stock, triage_status,
