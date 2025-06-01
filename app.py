@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS preparedness (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT,
     hospital_name TEXT,
+    disaster_management INTEGER,
     bed_occupancy INTEGER,
     staff_availability INTEGER,
     med_stock INTEGER,
