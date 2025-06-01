@@ -148,6 +148,7 @@ cursor.execute("""
     on_duty_staff, sick_staff, specialist_avail, ppe_stock, triage_status,
     tests_per_day, tat, food_supply_days, ipc_status, score
 ))
+
             conn.commit()
             st.success(f"Data saved. Preparedness Score: {score}%")
 
