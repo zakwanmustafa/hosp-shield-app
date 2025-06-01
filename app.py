@@ -1,82 +1,149 @@
-
 import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
 
-# Connect to SQLite DB
+# Database setup
 conn = sqlite3.connect('hospital_data.db', check_same_thread=False)
 cursor = conn.cursor()
-
-# Create table if not exists
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS preparedness (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT,
     hospital_name TEXT,
-    disaster_management INTEGER,
     bed_occupancy INTEGER,
+    icu_capacity INTEGER,
     staff_availability INTEGER,
     med_stock INTEGER,
     lab_capacity INTEGER,
+    pandemic_severity TEXT,
+    active_cases INTEGER,
+    spread_rate REAL,
+    risk_level TEXT,
+    ventilators INTEGER,
+    oxygen_supply INTEGER,
+    on_duty_staff INTEGER,
+    sick_staff INTEGER,
+    specialist_avail TEXT,
+    ppe_stock INTEGER,
+    triage_status TEXT,
+    tests_per_day INTEGER,
+    tat REAL,
+    food_supply_days INTEGER,
+    ipc_status TEXT,
     preparedness_score REAL
 )
 """)
 conn.commit()
 
-# Title and Sidebar
-st.title("HospShield 📊")
-st.sidebar.title("Navigation")
-menu = st.sidebar.radio("Go to", ["Dashboard", "Input Data", "Reports"])
+# UI configuration
+st.set_page_config(page_title="HospShield", layout="wide")
+st.title("HospShield: Hospital Disaster Preparedness Dashboard")
+
+# Sidebar navigation
+menu = st.sidebar.radio("Navigation", [
+    "Dashboard Overview",
+    "External Factors Input",
+    "Internal Factors Input",
+    "Reports & Recommendations",
+    "User Management"
+])
+
+# Helper function to calculate preparedness score
+def calculate_score(data):
+    components = [
+        100 - data['bed_occupancy'],
+        data['icu_capacity'],
+        data['staff_availability'],
+        data['med_stock'],
+        data['lab_capacity']
+    ]
+    return round(sum(components) / len(components), 2)
 
 # Dashboard
-if menu == "Dashboard":
-    st.subheader("📍 Hospital Preparedness Overview")
-
-    cursor.execute("SELECT * FROM preparedness ORDER BY date DESC LIMIT 1")
-    latest_data = cursor.fetchone()
-    
-    if latest_data:
-        _, date, name, bed, staff, meds, lab, score = latest_data
-        st.write(f"### 🏥 {name} (Last Updated: {date})")
+if menu == "Dashboard Overview":
+    st.subheader("📊 Dashboard Overview")
+    latest = pd.read_sql("SELECT * FROM preparedness ORDER BY date DESC LIMIT 1", conn)
+    if not latest.empty:
+        score = latest['preparedness_score'][0]
         st.metric("Preparedness Score", f"{score}%")
-        st.progress(score / 100)
+        if score < 50:
+            st.error("Low Preparedness")
+        elif score < 75:
+            st.warning("Moderate Preparedness")
+        else:
+            st.success("High Preparedness")
 
-        st.write("**Indicators**")
-        st.write(f"- Bed Occupancy: {bed}%")
-        st.write(f"- Staff Availability: {staff}%")
-        st.write(f"- Medicine Stock: {meds}%")
-        st.write(f"- Lab Capacity: {lab}%")
+        st.write("### Indicators")
+        st.bar_chart(latest[['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']].T)
     else:
-        st.info("No data submitted yet. Go to 'Input Data' to begin.")
+        st.info("No data available. Please input current status.")
 
-# Input Data
-elif menu == "Input Data":
-    st.subheader("📥 Enter Hospital Data")
+# External Factors Input
+elif menu == "External Factors Input":
+    st.subheader("🌍 External Factors")
+    with st.form("external_form"):
+        pandemic_severity = st.selectbox("Pandemic Severity", ["Local", "National", "Global"])
+        active_cases = st.number_input("Active Cases", min_value=0)
+        spread_rate = st.number_input("Rate of Spread (R0)", min_value=0.0)
+        risk_level = st.selectbox("Community Risk Level", ["Low", "Moderate", "High"])
+        st.form_submit_button("Save External Factors")
 
-    with st.form("input_form"):
-        name = st.text_input("Hospital Name")
-        bed = st.slider("Bed Occupancy (%)", 0, 100, 75)
-        staff = st.slider("Staff Availability (%)", 0, 100, 85)
-        meds = st.slider("Medicine Stock (%)", 0, 100, 70)
-        lab = st.slider("Lab Diagnostic Capacity (%)", 0, 100, 80)
-        submitted = st.form_submit_button("Submit")
+# Internal Factors Input
+elif menu == "Internal Factors Input":
+    st.subheader("🏥 Internal Factors")
+    with st.form("internal_form"):
+        hospital_name = st.text_input("Hospital Name")
+        bed_occupancy = st.slider("Bed Occupancy %", 0, 100, 75)
+        icu_capacity = st.slider("ICU Capacity %", 0, 100, 60)
+        staff_availability = st.slider("Staff Availability %", 0, 100, 85)
+        med_stock = st.slider("Medicine Stock %", 0, 100, 70)
+        lab_capacity = st.slider("Lab Capacity %", 0, 100, 80)
+        ventilators = st.number_input("Ventilators Available", min_value=0)
+        oxygen_supply = st.number_input("Oxygen Supply Units", min_value=0)
+        on_duty_staff = st.number_input("On-duty Staff Count", min_value=0)
+        sick_staff = st.number_input("Sick/Stressed Staff Count", min_value=0)
+        specialist_avail = st.text_input("Specialist Availability")
+        ppe_stock = st.number_input("PPE Stock", min_value=0)
+        triage_status = st.selectbox("Triage Status", ["Functioning", "Delayed", "Overwhelmed"])
+        tests_per_day = st.number_input("Tests Per Day", min_value=0)
+        tat = st.number_input("Test Turnaround Time (hrs)", min_value=0.0)
+        food_supply_days = st.number_input("Food Supply Reserve (days)", min_value=0)
+        ipc_status = st.selectbox("IPC Status", ["Adequate", "Partial", "Inadequate"])
 
-        if submitted:
-            score = round((100 - bed + staff + meds + lab) / 4, 2)
+        if st.form_submit_button("Submit"):
+            score = calculate_score({
+                'bed_occupancy': bed_occupancy,
+                'icu_capacity': icu_capacity,
+                'staff_availability': staff_availability,
+                'med_stock': med_stock,
+                'lab_capacity': lab_capacity
+            })
             date = datetime.now().strftime("%Y-%m-%d %H:%M")
             cursor.execute("""
-                INSERT INTO preparedness (date, hospital_name, bed_occupancy, staff_availability, med_stock, lab_capacity, preparedness_score)
-                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (date, name, bed, staff, meds, lab, score))
+                INSERT INTO preparedness (
+                    date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
+                    pandemic_severity, active_cases, spread_rate, risk_level, ventilators, oxygen_supply,
+                    on_duty_staff, sick_staff, specialist_avail, ppe_stock, triage_status,
+                    tests_per_day, tat, food_supply_days, ipc_status, preparedness_score
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
+                "", 0, 0.0, "", ventilators, oxygen_supply, on_duty_staff, sick_staff, specialist_avail,
+                ppe_stock, triage_status, tests_per_day, tat, food_supply_days, ipc_status, score
+            ))
             conn.commit()
-            st.success(f"Data submitted! Preparedness Score: {score}%")
+            st.success(f"Data saved. Preparedness Score: {score}%")
 
 # Reports
-elif menu == "Reports":
-    st.subheader("📄 Historical Reports")
+elif menu == "Reports & Recommendations":
+    st.subheader("📋 Reports")
     df = pd.read_sql("SELECT * FROM preparedness ORDER BY date DESC", conn)
     st.dataframe(df)
-
     csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download CSV", data=csv, file_name="hospital_preparedness.csv", mime='text/csv')
+    st.download_button("Download CSV", csv, "preparedness_data.csv", "text/csv")
+
+# User Management (Placeholder)
+elif menu == "User Management":
+    st.subheader("👥 User Management & Audit Trails")
+    st.info("Role-based access, audit logs, and digital acknowledgement coming soon.")
