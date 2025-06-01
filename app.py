@@ -93,29 +93,30 @@ if menu == "Dashboard Overview":
 
         st.write("### Indicators")
         
-        if not latest.empty:
-    score = latest.iloc[0].get('preparedness_score', 0)
-    st.metric("Preparedness Score", f"{score}%")
-    if score < 50:
-        st.error("Low Preparedness")
-    elif score < 75:
-        st.warning("Moderate Preparedness")
+            if not latest.empty:
+        score = latest.iloc[0]['preparedness_score']
+        st.metric("Preparedness Score", f"{score}%")
+        if score < 50:
+            st.error("Low Preparedness")
+        elif score < 75:
+            st.warning("Moderate Preparedness")
+        else:
+            st.success("High Preparedness")
+
+        st.write("### Indicators")
+
+        expected_columns = ['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']
+        available_columns = [col for col in expected_columns if col in latest.columns]
+
+        if available_columns:
+            indicators = latest.loc[:, available_columns].T
+            indicators.columns = ['Latest']
+            st.bar_chart(indicators)
+        else:
+            st.warning("No indicator data available to display charts.")
     else:
-        st.success("High Preparedness")
+        st.info("No data available. Please input current status.")
 
-    st.write("### Indicators")
-
-    expected_columns = ['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']
-    available_columns = [col for col in expected_columns if col in latest.columns]
-
-    if available_columns:
-        indicators = latest.loc[:, available_columns].T
-        indicators.columns = ['Latest']
-        st.bar_chart(indicators)
-    else:
-        st.warning("No indicator data available to display charts.")
-else:
-    st.info("No data available. Please input current status.")
         
         indicators = latest.loc[:, ['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']].T
         indicators.columns = ['Latest']
