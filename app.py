@@ -60,29 +60,25 @@ if "external_factors" not in st.session_state:
 
 # Helper function to calculate preparedness score
 def calculate_score(data):
-    # Defensive: ensure all inputs are numeric and reasonable
     try:
         components = [
-            max(0, 100 - data.get('bed_occupancy', 0)),  # invert occupancy for score
+            max(0, 100 - data.get('bed_occupancy', 0)),
             max(0, min(100, data.get('icu_capacity', 0))),
             max(0, min(100, data.get('staff_availability', 0))),
             max(0, min(100, data.get('med_stock', 0))),
             max(0, min(100, data.get('lab_capacity', 0))),
         ]
-        score = round(sum(components) / len(components), 2)
-        return score
+        return round(sum(components) / len(components), 2)
     except Exception:
         return 0.0
-
-# MENU LOGIC
 
 # 1. Dashboard Overview
 if menu == "Dashboard Overview":
     st.subheader("📊 Dashboard Overview")
-
     latest = pd.read_sql("SELECT * FROM preparedness ORDER BY date DESC LIMIT 1", conn)
+
     if not latest.empty:
-        score = latest.iloc[0]['preparedness_score']
+        score = latest.iloc[0].get('preparedness_score', 0)
         st.metric("Preparedness Score", f"{score}%")
         if score < 50:
             st.error("Low Preparedness")
@@ -92,19 +88,6 @@ if menu == "Dashboard Overview":
             st.success("High Preparedness")
 
         st.write("### Indicators")
-        
-    if not latest.empty:
-        score = latest.iloc[0]['preparedness_score']
-        st.metric("Preparedness Score", f"{score}%")
-        if score < 50:
-            st.error("Low Preparedness")
-        elif score < 75:
-            st.warning("Moderate Preparedness")
-        else:
-            st.success("High Preparedness")
-
-        st.write("### Indicators")
-
         expected_columns = ['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']
         available_columns = [col for col in expected_columns if col in latest.columns]
 
@@ -116,11 +99,6 @@ if menu == "Dashboard Overview":
             st.warning("No indicator data available to display charts.")
     else:
         st.info("No data available. Please input current status.")
-
-        
-        indicators = latest.loc[:, ['bed_occupancy', 'icu_capacity', 'staff_availability', 'med_stock', 'lab_capacity']].T
-        indicators.columns = ['Latest']
-        st.bar_chart(indicators)
 
 # 2. External Factors Input
 elif menu == "External Factors Input":
@@ -154,7 +132,7 @@ elif menu == "Internal Factors Input":
         oxygen_supply = st.number_input("Oxygen Supply Units", min_value=0, step=1)
         on_duty_staff = st.number_input("On-duty Staff Count", min_value=0, step=1)
         sick_staff = st.number_input("Sick/Stressed Staff Count", min_value=0, step=1)
-        specialist_avail = st.text_input("Specialist Availability (e.g. Infectious Disease, Emergency)", max_chars=200)
+        specialist_avail = st.text_input("Specialist Availability", max_chars=200)
         ppe_stock = st.number_input("PPE Stock Units", min_value=0, step=1)
         triage_status = st.selectbox("Triage Status", ["Functioning", "Delayed", "Overwhelmed"])
         tests_per_day = st.number_input("Tests Per Day", min_value=0, step=1)
@@ -163,7 +141,6 @@ elif menu == "Internal Factors Input":
         ipc_status = st.selectbox("IPC Status", ["Adequate", "Partial", "Inadequate"])
 
         submitted = st.form_submit_button("Submit")
-
         if submitted:
             ext = st.session_state.external_factors
             score = calculate_score({
@@ -173,22 +150,20 @@ elif menu == "Internal Factors Input":
                 'med_stock': med_stock,
                 'lab_capacity': lab_capacity
             })
-
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             cursor.execute("""
-    INSERT INTO preparedness (
-        date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
-        pandemic_severity, active_cases, spread_rate, risk_level, ventilators, oxygen_supply,
-        on_duty_staff, sick_staff, specialist_avail, ppe_stock, triage_status,
-        tests_per_day, tat, food_supply_days, ipc_status, preparedness_score
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-""", (
-    date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
-    ext['pandemic_severity'], ext['active_cases'], ext['spread_rate'], ext['risk_level'],
-    ventilators, oxygen_supply, on_duty_staff, sick_staff, specialist_avail, ppe_stock,
-    triage_status, tests_per_day, tat, food_supply_days, ipc_status, score
-
+                INSERT INTO preparedness (
+                    date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
+                    pandemic_severity, active_cases, spread_rate, risk_level, ventilators, oxygen_supply,
+                    on_duty_staff, sick_staff, specialist_avail, ppe_stock, triage_status,
+                    tests_per_day, tat, food_supply_days, ipc_status, preparedness_score
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
+                ext['pandemic_severity'], ext['active_cases'], ext['spread_rate'], ext['risk_level'],
+                ventilators, oxygen_supply, on_duty_staff, sick_staff, specialist_avail, ppe_stock,
+                triage_status, tests_per_day, tat, food_supply_days, ipc_status, score
             ))
             conn.commit()
             st.success(f"Data saved successfully! Preparedness Score: {score}%")
@@ -204,7 +179,6 @@ elif menu == "Reports & Recommendations":
         csv = df.to_csv(index=False).encode('utf-8')
         st.download_button("Download CSV", csv, "preparedness_data.csv", "text/csv")
 
-        # Placeholder for recommendations based on last entry
         latest = df.iloc[0]
         st.markdown("### Recommendations based on latest data:")
         recs = []
@@ -226,8 +200,7 @@ elif menu == "User Management":
     st.subheader("👥 User Management & Audit Trails")
     st.info("Role-based access control, audit logs, and digital acknowledgment features coming soon.")
 
-# Close DB connection on app exit
-# (Optional: can be omitted as app exits)
+# Close DB connection on exit
 def close_conn():
     conn.close()
 
