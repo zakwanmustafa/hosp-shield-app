@@ -93,7 +93,7 @@ if menu == "Dashboard Overview":
 
         st.write("### Indicators")
         
-            if not latest.empty:
+    if not latest.empty:
         score = latest.iloc[0]['preparedness_score']
         st.metric("Preparedness Score", f"{score}%")
         if score < 50:
