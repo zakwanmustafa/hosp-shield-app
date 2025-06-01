@@ -181,13 +181,13 @@ elif menu == "Internal Factors Input":
                     date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
                     pandemic_severity, active_cases, spread_rate, risk_level, ventilators, oxygen_supply,
                     on_duty_staff, sick_staff, specialist_avail, ppe_stock, triage_status,
-                    tests_per_day, tat, food_supply_days, ipc_status, preparedness_score
+                    tests_per_day, tat, food_supply_days, ipc_status, score
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 date, hospital_name, bed_occupancy, icu_capacity, staff_availability, med_stock, lab_capacity,
                 ext['pandemic_severity'], ext['active_cases'], ext['spread_rate'], ext['risk_level'],
                 ventilators, oxygen_supply, on_duty_staff, sick_staff, specialist_avail, ppe_stock,
-                triage_status, tests_per_day, tat, food_supply_days, ipc_status, preparedness_score
+                triage_status, tests_per_day, tat, food_supply_days, ipc_status, score
             ))
             conn.commit()
             st.success(f"Data saved successfully! Preparedness Score: {score}%")
